@@ -23,8 +23,6 @@ int x1=0,y1=0,x2=0,y2=0;
 int middle_x1=477, middle_y1=490, middle_x2=497, middle_y2=483;
 int max=977;
 int min=0;
-int deadzone=40;
-int speed = 0;
 
 void controlRF(int BI1,int BI2,int speed){
   if (speed >= 0) {
