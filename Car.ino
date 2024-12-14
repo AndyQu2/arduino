@@ -98,6 +98,11 @@ void loop() {
   y1=analogRead(joy1Y);
   x2=analogRead(joy2X);
   y2=analogRead(joy2Y);
+  
+  Serial.print("x1: ");
+  Serial.print(x1);
+  Serial.print(" y1: ");
+  Serial.println(y1);
 
   int speed_y = map(y1, min, max, -200, 200);
   int speed_x = map(x1, min, max, -200, 200);
@@ -108,8 +113,8 @@ void loop() {
   int speed_lf = speed_y + speed_x + speed_x1;
   int speed_lr = speed_y - speed_x + speed_x1;
 
-  controlRF(1, 0, speed_rf);
-  controlRR(1, 0, speed_rr);
-  controlLF(1, 0, speed_lf);
-  controlLR(1, 0, speed_lr);
+  controlRF(1, 0, constrain(speed_rf, -200, 200));
+  controlRR(1, 0, constrain(speed_rr, -200, 200));
+  controlLF(1, 0, constrain(speed_lf, -200, 200));
+  controlLR(1, 0, constrain(speed_lr, -200, 200));
 }
