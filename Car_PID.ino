@@ -1,10 +1,5 @@
 #include <JY901.h>
 
-#define joy1X A10
-#define joy1Y A11
-#define joy2X A15
-#define joy2Y A14
-
 #define RF_BI1 34
 #define RF_BI2 35
 #define RF_PWM 12
@@ -21,94 +16,88 @@
 #define LR_BI2 39
 #define LR_PWM 5
 
-typedef struct {
-  double kp;
-  double ki;
-  double kd;
-  double previous_error;
-  double integral;
-} PIDController;
+class PIDController {
+	protected:
+		double kp;
+		double ki;
+		double kd;
+		double previous_error;
+		double integral;
+    unsigned long previous_time;
+    const double maxIntegral = 1000;
+	public:
+		PIDController(double, double, double);
+		double PIDCompute(double, double, double, unsigned long);
+    unsigned long getPreviousTime();
+};
+
+class Motor {
+	protected:
+		int BI1Pin;
+		int BI2Pin;
+		int PWMPin;
+	public:
+		void InitMotor(int, int, int);
+		void Control(int, int, int);
+};
+
+void Motor::InitMotor(int PWM_Pin, int BI1_Pin, int BI2_Pin) {
+	BI1Pin = BI1_Pin;
+	BI2Pin = BI2_Pin;
+	PWMPin = PWM_Pin;
+	pinMode(PWM_Pin, OUTPUT);
+	pinMode(BI1_Pin, OUTPUT);
+	pinMode(BI2_Pin, OUTPUT);
+}
+
+void Motor::Control(int BI1, int BI2, int speed) {
+	if (speed >= 0) {
+		digitalWrite(BI1Pin, BI1);
+		digitalWrite(BI2Pin, BI2);
+		digitalWrite(PWMPin, speed);
+	}
+	else if (speed < 0) {
+		digitalWrite(BI1Pin, BI2);
+		digitalWrite(BI2Pin, BI1);
+		digitalWrite(PWMPin, abs(speed));
+	}
+}
+
+PIDController::PIDController(double Kp, double Ki, double Kd) {
+	kp = Kp;
+	ki = Ki;
+	kd = Kd;
+	previous_error = 0.0;
+	integral = 0.0;
+}
+
+double PIDController::PIDCompute(double setpoint, double measured_value, double dt, unsigned long currentTime) {
+	double error = setpoint - measured_value;
+	integral += error * dt;
+  integral = constrain(integral, -maxIntegral, maxIntegral);
+	double derivative = (error - previous_error) / dt;
+	double output = (kp * error) + (ki * integral) + (kd * derivative);
+	previous_error = error;
+  previous_time = currentTime;
+	return output;
+}
+
+unsigned long PIDController::getPreviousTime() {
+  return previous_time;
+}
 
 int speed_rf, speed_rr, speed_lf, speed_lr;
 double output;
-PIDController pid;
-const double setpoint = 0, dt = 0.8;
+const double setpoint = 0;
+double deltatime;
+unsigned long currentTime;
+double Kp = 1.0, Ki = 0.1, Kd = 0.05;
+PIDController pid(Kp, Ki, Kd);
 
-double Kp = 30, Ki = 25, Kd = 20;
-
-int x1=0,y1=0,x2=0,y2=0;
-int middle_x1=477, middle_y1=490, middle_x2=497, middle_y2=483;
-int max=977;
-int min=0;
-
-void PID_Init(PIDController *pid, double kp, double ki, double kd) {
-  pid->kp = kp;
-  pid->ki = ki;
-  pid->kd = kd;
-  pid->previous_error = 0.0;
-  pid->integral = 0.0;
-}
-
-double PID_Compute(PIDController *pid, double setpoint, double measured_value, double dt) {
-  double error = setpoint - measured_value;
-  pid->integral += error * dt;
-  double derivative = (error - pid->previous_error) / dt;
-  double output = pid->kp * error + pid->ki * pid->integral + pid->kd * derivative;
-  pid->previous_error = error;
-  return output;
-}
-
-void controlRF(int BI1,int BI2,int speed){
-  if (speed >= 0) {
-    digitalWrite(RF_BI1, BI1);
-    digitalWrite(RF_BI2, BI2);
-    analogWrite(RF_PWM, speed);
-  }
-  else if (speed < 0) {
-    digitalWrite(RF_BI1, BI2);
-    digitalWrite(RF_BI2, BI1);
-    analogWrite(RF_PWM, abs(speed));
-  }
-}
-
-void controlLF(int BI2,int BI1,int speed){
-  if (speed >= 0) {
-    digitalWrite(LF_BI1, BI1);
-    digitalWrite(LF_BI2, BI2);
-    analogWrite(LF_PWM, speed);
-  }
-  else if (speed < 0) {
-    digitalWrite(LF_BI1, BI2);
-    digitalWrite(LF_BI2, BI1);
-    analogWrite(LF_PWM, abs(speed));
-  }
-}
-
-void controlRR(int BI1,int BI2,int speed){
-  if (speed >= 0) {
-    digitalWrite(RR_BI1, BI1);
-    digitalWrite(RR_BI2, BI2);
-    analogWrite(RR_PWM, speed);
-  }
-  else if (speed < 0) {
-    digitalWrite(RR_BI1, BI2);
-    digitalWrite(RR_BI2, BI1);
-    analogWrite(RR_PWM, abs(speed));
-  }
-}
-
-void controlLR(int BI2,int BI1,int speed){
-  if (speed >= 0) {
-    digitalWrite(LR_BI1, BI1);
-    digitalWrite(LR_BI2, BI2);
-    analogWrite(LR_PWM, speed);
-  }
-  else if (speed < 0) {
-    digitalWrite(LR_BI1, BI2);
-    digitalWrite(LR_BI2, BI1);
-    analogWrite(LR_PWM, abs(speed));
-  }
-}
+Motor RFMotor;
+Motor RRMotor;
+Motor LFMotor;
+Motor LRMotor;
 
 void setup() {
   Serial.begin(9600);
@@ -116,41 +105,33 @@ void setup() {
   Serial3.begin(9600);
   JY901.attach(Serial3);
 
-  pinMode(RF_PWM,OUTPUT);
-  pinMode(RR_PWM,OUTPUT);
-  pinMode(LF_PWM,OUTPUT);
-  pinMode(LR_PWM,OUTPUT);
-
-  pinMode(RF_BI1,OUTPUT);
-  pinMode(RF_BI2,OUTPUT);
-  pinMode(RR_BI1,OUTPUT);
-  pinMode(RR_BI2,OUTPUT);
-  pinMode(LF_BI1,OUTPUT);
-  pinMode(LF_BI2,OUTPUT);
-  pinMode(LR_BI1,OUTPUT); 
-  pinMode(LR_BI2,OUTPUT);
+  RFMotor.InitMotor(RF_PWM, RF_BI1, RF_BI2);
+  RRMotor.InitMotor(RR_PWM, RR_BI1, RR_BI2);
+  LFMotor.InitMotor(LF_PWM, LF_BI1, LF_BI2);
+  LRMotor.InitMotor(LR_PWM, LR_BI1, LR_BI2);
 }
 
 void loop() {
+  currentTime = millis();
+  deltatime = (currentTime - pid.getPreviousTime()) / 1000.0;
+
   JY901.receiveSerialData();
   double angle = JY901.getYaw();
-  PID_Init(&pid, Kp, Ki, Kd);
 
   x1=analogRead(joy1X);
   y1=analogRead(joy1Y);
   x2=analogRead(joy2X);
   y2=analogRead(joy2Y);
 
-  output = PID_Compute(&pid, setpoint, angle, dt);
+  output = pid.PIDCompute(setpoint, angle, deltatime, currentTime);
 
   speed_rf = -output;
   speed_rr = -output;
   speed_lf = output;
   speed_lr = output;
-  Serial.println(angle);
 
-  controlRF(1, 0, constrain(speed_rf, -200, 200));
-  controlRR(1, 0, constrain(speed_rr, -200, 200));
-  controlLF(1, 0, constrain(speed_lf, -200, 200));
-  controlLR(1, 0, constrain(speed_lr, -200, 200));
+  RFMotor.Control(1, 0, constrain(speed_rf, -200, 200));
+  RRMotor.Control(1, 0, constrain(speed_rr, -200, 200));
+  LFMotor.Control(0, 1, constrain(speed_lf, -200, 200));
+  LRMotor.Control(0, 1, constrain(speed_lr, -200, 200));
 }
