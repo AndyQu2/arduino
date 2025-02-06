@@ -8,8 +8,8 @@ class PIDController {
 		double kd;
 		double previous_error;
 		double integral;
-    unsigned long previous_time;
-    const double maxIntegral = 1000;
+    		unsigned long previous_time;
+    		const double maxIntegral = 1000;
 	public:
 		PIDController(double, double, double);
 		double PIDCompute(double, double, double, unsigned long);
