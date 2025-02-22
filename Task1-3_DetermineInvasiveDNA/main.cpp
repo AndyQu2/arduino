@@ -1,10 +1,12 @@
 /* 
-	Ideas and write by AndyQu (Austin)
+	Ideas and write by AndyQu (Quyanchao)
+ 
  	MateROV2025 Competition
   	Task1.3 - eDNA of invasive carp
    	Determine if the unknown sequences include invasive carp
-    	Strongly scold somebody who use this code and add some word to scold me
+	Strongly scold somebody who use this code and add some word to scold me
 */
+
 #include <iostream>
 #include <fstream>
 #include <cctype>
