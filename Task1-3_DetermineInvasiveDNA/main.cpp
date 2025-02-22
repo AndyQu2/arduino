@@ -1,3 +1,6 @@
+/* 
+	Ideas and write by AndyQu (Austin)
+*/
 #include <iostream>
 #include <fstream>
 #include <cctype>
@@ -90,7 +93,8 @@ vector<string> readDNAGivenFromFile() {
 
 int compareDNA(DNA_SAMPLE_STRUCT sample, string dna) {
 	int flagHead = dna.find(sample.head);
-	int flagTail = dna.find(sample.tail);
+	int flagTail;
+	if (flagHead) flagTail = dna.find(sample.tail);
 	int flagBody;
 	
 	if ((flagHead != string::npos) && (flagTail != string::npos)) {
