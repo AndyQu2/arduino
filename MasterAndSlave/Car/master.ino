@@ -1,3 +1,5 @@
+// Master
+
 #define JOYSTICK_X A9
 #define JOYSTICK_Y A8
 #define JOYSTICK1_X A7
@@ -12,7 +14,7 @@ double roll, pitch, yaw = 0.0;
 int x1_mid = 521;
 int x2_mid = 533;
 int y1_mid = 496;
-int deadzone = 20;
+int deadzone = 30;
 
 void Setdeadzone(int a, int b, byte c){
   if (abs(a - b) < deadzone){
