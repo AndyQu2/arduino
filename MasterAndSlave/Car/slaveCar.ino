@@ -18,7 +18,8 @@
 #define LR_PWM 5
 
 int received[8] = {0};
-int speed_rf, speed_rr, speed_lf, speed_lr = 0;
+int receivedVerifyCode = 0;
+int last_rf, last_rr, last_lf, last_lr = 0;
 
 void controlRF(int BI1,int BI2,int speed){
   if (speed >= 0) {
@@ -126,31 +127,47 @@ void loop() {
       received[i] = (int)Serial2.read();
     }
   }
+  receivedVerifyCode = (int)Serial2.read();
 
-  speed_rf = received[1];
+  int speed_rf = received[1];
   if (!received[0]) speed_rf = speed_rf * -1;
-  speed_rr = received[3];
+  int speed_rr = received[3];
   if (!received[2]) speed_rr = speed_rr * -1;
-  speed_lf = received[5];
+  int speed_lf = received[5];
   if (!received[4]) speed_lf = speed_lf * -1;
-  speed_lr = received[7];
+  int speed_lr = received[7];
   if (!received[6]) speed_lr = speed_lr * -1;
 
-  Serial.print("Received Speed Data: ");
-  Serial.print(speed_rf);
-	Serial.print(" ");
-  Serial.print(speed_rr);
-	Serial.print(" ");
-  Serial.print(speed_lf);
-	Serial.print(" ");
-  Serial.print(speed_lr);
-	Serial.print(" ");
-  Serial.println();
+  Serial.print("Verify code: ");
+  Serial.println(receivedVerifyCode);
 
-  controlRF(1, 0, speed_rf + 28);
-  controlRR(1, 0, speed_rr + 28);
-  controlLF(1, 0, speed_lf + 28);
-  controlLR(1, 0, speed_lr + 28);
+  if (abs(speed_rf + speed_rr + speed_lf + speed_lr) % 100 == receivedVerifyCode) {
+    if(abs(speed_rf) > 200) speed_rf = 0;
+    if(abs(speed_rr) > 200) speed_rr = 0;
+    if(abs(speed_lf) > 200) speed_lf = 0;
+    if(abs(speed_lr) > 200) speed_lr = 0;
+
+    Serial.print("Received Speed Data: ");
+    Serial.print(speed_rf);
+	  Serial.print(" ");
+    Serial.print(speed_rr);
+	  Serial.print(" ");
+    Serial.print(speed_lf);
+	  Serial.print(" ");
+    Serial.print(speed_lr);
+	  Serial.print(" ");
+    Serial.println();
+
+    last_rf = speed_rf;
+    last_rr = speed_rr;
+    last_lf = speed_lf;
+    last_lr = speed_lr;
+  }
+
+  controlRF(1, 0, last_rf);
+  controlRR(1, 0, last_rr);
+  controlLF(1, 0, last_lf);
+  controlLR(1, 0, last_lr);
 
   double roll = JY901.getRoll();
   double pitch = JY901.getPitch();
