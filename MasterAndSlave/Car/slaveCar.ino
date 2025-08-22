@@ -1,3 +1,4 @@
+// Slave
 #include <JY901.h>
 
 #define RF_BI1 34
@@ -95,6 +96,7 @@ void sendDoubleDataToMaster(double data)
 void setup() {
   Serial.begin(9600);
   Serial2.begin(9600);
+  Serial3.begin(9600);
 
   pinMode(RF_BI1, OUTPUT);
   pinMode(RF_BI2, OUTPUT);
@@ -112,7 +114,7 @@ void setup() {
   pinMode(LR_BI2, OUTPUT);
   pinMode(LR_PWM, OUTPUT);
 
-  JY901.attach(Serial);
+  JY901.attach(Serial3);
 }
  
 void loop() {
@@ -145,10 +147,10 @@ void loop() {
 	Serial.print(" ");
   Serial.println();
 
-  controlRF(1, 0, speed_rf);
-  controlRR(1, 0, speed_rr);
-  controlLF(1, 0, speed_lf);
-  controlLR(1, 0, speed_lr);
+  controlRF(1, 0, speed_rf + 28);
+  controlRR(1, 0, speed_rr + 28);
+  controlLF(1, 0, speed_lf + 28);
+  controlLR(1, 0, speed_lr + 28);
 
   double roll = JY901.getRoll();
   double pitch = JY901.getPitch();
