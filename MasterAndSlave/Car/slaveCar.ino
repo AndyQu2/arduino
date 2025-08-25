@@ -1,5 +1,6 @@
 // Slave
 #include <JY901.h>
+#include <PID_v1.h>
 
 #define RF_BI1 34
 #define RF_BI2 35
@@ -20,6 +21,11 @@
 int received[8] = {0};
 int receivedVerifyCode = 0;
 int last_rf, last_rr, last_lf, last_lr = 0;
+
+const double setPoint = 140.0;
+double input, output = 0.0;
+double Kp=1, Ki=0.05 , Kd=0.25;
+PID myPID(&input, &output, &setPoint, 2, 1, 1,P_ON_M, DIRECT);
 
 void controlRF(int BI1,int BI2,int speed){
   if (speed >= 0) {
@@ -73,27 +79,6 @@ void controlLR(int BI2,int BI1,int speed){
   }
 }
 
-void sendDoubleDataToMaster(double data)
-{
-  if (data > 0)
-  {
-    Serial2.write(1);
-    int body = floor(data);
-    int remain = (data - body) * 100;
-    Serial2.write(body);
-    Serial2.write(remain);
-  }
-  if (data < 0)
-  {
-    Serial2.write(0);
-    int body = ceil(data);
-    int remain = (data - body) * -100;
-    
-    Serial2.write((body * -1));
-    Serial2.write(remain);
-  }
-}
-
 void setup() {
   Serial.begin(9600);
   Serial2.begin(9600);
@@ -116,6 +101,8 @@ void setup() {
   pinMode(LR_PWM, OUTPUT);
 
   JY901.attach(Serial3);
+
+  myPID.SetMode(AUTOMATIC);
 }
  
 void loop() {
@@ -141,7 +128,7 @@ void loop() {
   Serial.print("Verify code: ");
   Serial.println(receivedVerifyCode);
 
-  if (abs(speed_rf + speed_rr + speed_lf + speed_lr) % 100 == receivedVerifyCode) {
+  if (floor(abs(speed_lr + speed_rr) >> 2) == receivedVerifyCode) {
     if(abs(speed_rf) > 200) speed_rf = 0;
     if(abs(speed_rr) > 200) speed_rr = 0;
     if(abs(speed_lf) > 200) speed_lf = 0;
@@ -158,31 +145,38 @@ void loop() {
 	  Serial.print(" ");
     Serial.println();
 
-    last_rf = speed_rf;
-    last_rr = speed_rr;
-    last_lf = speed_lf;
-    last_lr = speed_lr;
+    if (abs(input) < abs(setPoint))
+    {
+      last_rf = speed_rf + output;
+      last_rr = speed_rr + output;
+      last_lf = speed_lf - output;
+      last_lr = speed_lr - output;
+    }
+    if (abs(input) > abs(setPoint))
+    {
+      last_rf = speed_rf - output;
+      last_rr = speed_rr - output;
+      last_lf = speed_lf + output;
+      last_lr = speed_lr + output;
+    }
   }
-
-  controlRF(1, 0, last_rf);
-  controlRR(1, 0, last_rr);
-  controlLF(1, 0, last_lf);
-  controlLR(1, 0, last_lr);
+  
+  controlRF(1, 0, constrain(last_rf, -200, 200));
+  controlRR(1, 0, constrain(last_rr, -200, 200));
+  controlLF(1, 0, constrain(last_lf, -200, 200));
+  controlLR(1, 0, constrain(last_lr, -200, 200));
 
   double roll = JY901.getRoll();
   double pitch = JY901.getPitch();
-  double yaw = JY901.getYaw();
+  input = JY901.getYaw();
 
   Serial.print("Angle:");
 	Serial.print(roll);
 	Serial.print(" ");
 	Serial.print(pitch);
 	Serial.print(" ");
-	Serial.print(yaw);
+	Serial.print(input);
 	Serial.print("\n");
 
-  // Sending JY901 data back to master
-  sendDoubleDataToMaster(roll);
-  sendDoubleDataToMaster(pitch);
-  sendDoubleDataToMaster(yaw);
+  myPID.Compute();
 }
