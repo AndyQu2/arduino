@@ -150,8 +150,9 @@ void loop() {
   Serial3.write(verify);
 
   sendBigDataToSlave(trigger1);
+  sendBigDataToSlave(trigger2);
+  sendBigDataToSlave(trigger3);
+  sendBigDataToSlave(trigger4);
 
   Serial3.write(0xFF);
-  
-  delay(100);
 }
