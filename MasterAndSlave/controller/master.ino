@@ -86,7 +86,7 @@ void loop() {
         received[i] = Serial2.read();
       }
     }
-    if (i == 32) {
+    if (i == 46) {
       while (received[i] != 0xFF) {
         received[i] = Serial2.read();
       }
@@ -135,5 +135,13 @@ void loop() {
   Serial.print(" VerifyCode: ");
   Serial.print(verifySpeed);
 
+  Serial.print(" Trigger: ");
+  Serial.print(received[26] + received[27] + received[28] + received[29] + received[30]);
+  Serial.print(" ");
+  Serial.print(received[31] + received[32] + received[33] + received[34] + received[35]);
+  Serial.print(" ");
+  Serial.print(received[36] + received[37] + received[38] + received[39] + received[40]);
+  Serial.print(" ");
+  Serial.print(received[41] + received[42] + received[43] + received[44] + received[45]);
   Serial.println();
 }
