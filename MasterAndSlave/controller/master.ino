@@ -15,8 +15,8 @@ int switchValue[8] = {0};
 int buttonValue[8] = {0};
 int trigger1, trigger2, trigger3, trigger4 = 0;
 
-const int max=990;
-const int min=0;
+const int max=1300;
+const int min=100;
 
 int parity_check(int data, int mode) 
 {
@@ -102,14 +102,19 @@ void loop() {
   int x2 = analogRead(JOYSTICK2_X);
   int y2 = analogRead(JOYSTICK2_Y);
 
-  int speed_x1 = map(x1, min, 996, -200, 200);
-  int speed_x2 = map(x2, min, 1066, -200, 200);
-  int speed_y1 = map(y1, min, 1040, -200, 200);
+  int speed_x1 = map(x1, min, max, -200, 200);
+  int speed_x2 = map(x2, min, max, -200, 200);
+  int speed_y1 = map(y1, min, max, -200, 200);
 
   int speed_RF = speed_y1 - speed_x1 - speed_x2; 
   int speed_RR = speed_y1 + speed_x1 - speed_x2; 
   int speed_LF = speed_y1 + speed_x1 + speed_x2; 
   int speed_LR = speed_y1 - speed_x1 + speed_x2; 
+
+  speed_RF = constrain(speed_RF, -200, 200);
+  speed_RR = constrain(speed_RR, -200, 200);
+  speed_LF = constrain(speed_LF, -200, 200);
+  speed_LR = constrain(speed_LR, -200, 200);
 
   Serial.print(" Speed: ");
   Serial.print(speed_RF);
@@ -120,11 +125,6 @@ void loop() {
   Serial.print(" ");
   Serial.print(speed_LR);
   Serial.print(" ");
-
-  speed_RF = constrain(speed_RF, -200, 200);
-  speed_RR = constrain(speed_RR, -200, 200);
-  speed_LF = constrain(speed_LF, -200, 200);
-  speed_LR = constrain(speed_LR, -200, 200);
 
   Serial.print("Switch: ");
   int switch_sum = 0;
@@ -171,6 +171,7 @@ void loop() {
   sendSpeedDataToSlave(speed_RR);
   sendSpeedDataToSlave(speed_LF);
   sendSpeedDataToSlave(speed_LR);
+
   int verify = abs(speed_LR + speed_RR + speed_LR + speed_RF) >> 2;
   Serial3.write(verify);
 
