@@ -1,147 +1,194 @@
-#define RF_BI1 34
-#define RF_BI2 35
-#define RF_PWM 12
+#define JOYSTICK1_X A2
+#define JOYSTICK1_Y A3
+#define JOYSTICK2_X A4
+#define JOYSTICK2_Y A5
+#define TRIGGER1 A6
+#define TRIGGER2 A7
+#define TRIGGER3 A8
+#define TRIGGER4 A9
+#define EVEN_CHECKMODE 0
+#define ODD_CHECKMODE 1
 
-#define RR_BI1 37
-#define RR_BI2 36
-#define RR_PWM 8
+const int buttonPin[] = {37, 36, 35, 34, 33, 32, 31, 30};
+const int switchPin[] = {22, 23, 24, 25, 26, 27, 28, 29};
+int switchValue[8] = {0};
+int buttonValue[8] = {0};
+int trigger1, trigger2, trigger3, trigger4 = 0;
 
-#define LF_BI1 43
-#define LF_BI2 42
-#define LF_PWM 9
+const int max=990;
+const int min=0;
 
-#define LR_BI1 29
-#define LR_BI2 39
-#define LR_PWM 5
-
-int received[47];
-int data[16];
-int current = 0xFF;
-bool hasInvalid = false;
-int last_rf, last_rr, last_lf, last_lr = 0;
-
-void controlRF(int BI1,int BI2,int speed){
-  if (speed >= 0) {
-    digitalWrite(RF_BI1, BI1);
-    digitalWrite(RF_BI2, BI2);
-    analogWrite(RF_PWM, speed);
+int parity_check(int data, int mode) 
+{
+  int count = 0;
+  unsigned int unsigned_data = (unsigned int)data;
+    
+  for (int i = 0; i < sizeof(int) * 8; i++) 
+  {
+    count += (unsigned_data >> i) & 0x01;
   }
-  else if (speed < 0) {
-    digitalWrite(RF_BI1, BI2);
-    digitalWrite(RF_BI2, BI1);
-    analogWrite(RF_PWM, abs(speed));
-  }
-}
-
-void controlLF(int BI2,int BI1,int speed){
-  if (speed >= 0) {
-    digitalWrite(LF_BI1, BI1);
-    digitalWrite(LF_BI2, BI2);
-    analogWrite(LF_PWM, speed);
-  }
-  else if (speed < 0) {
-    digitalWrite(LF_BI1, BI2);
-    digitalWrite(LF_BI2, BI1);
-    analogWrite(LF_PWM, abs(speed));
+    
+  if (mode == 0) 
+  { 
+    return (count % 2 == 0) ? 0 : 1;
+  } 
+  else 
+  { 
+    return (count % 2 == 0) ? 1 : 0;
   }
 }
 
-void controlRR(int BI1,int BI2,int speed){
-  if (speed >= 0) {
-    digitalWrite(RR_BI1, BI1);
-    digitalWrite(RR_BI2, BI2);
-    analogWrite(RR_PWM, speed);
+void sendSpeedDataToSlave(int data)
+{
+  if (data > 0)
+  {
+    Serial3.write(1);
+    int body = floor(data);
+
+    Serial3.write(body);
   }
-  else if (speed < 0) {
-    digitalWrite(RR_BI1, BI2);
-    digitalWrite(RR_BI2, BI1);
-    analogWrite(RR_PWM, abs(speed));
+  if (data < 0)
+  {
+    Serial3.write(0);
+    int body = ceil(data);
+        
+    Serial3.write((body * -1));
+  }
+  if (data == 0)
+  {
+    Serial3.write(0);
+    Serial3.write(0);
   }
 }
 
-void controlLR(int BI2,int BI1,int speed){
-  if (speed >= 0) {
-    digitalWrite(LR_BI1, BI1);
-    digitalWrite(LR_BI2, BI2);
-    analogWrite(LR_PWM, speed);
+void sendBigDataToSlave(int data)
+{
+  int count = 5;
+  while(data > 255)
+  {
+    Serial3.write(255);
+    data = data - 255;
+    count --;
   }
-  else if (speed < 0) {
-    digitalWrite(LR_BI1, BI2);
-    digitalWrite(LR_BI2, BI1);
-    analogWrite(LR_PWM, abs(speed));
+
+  Serial3.write(data);
+  count --;
+
+  if (count != 0)
+  {
+    for (int i = 0; i < count; i ++)
+    {
+      Serial3.write(0);
+    }
   }
 }
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Serial2.begin(9600);
+  Serial3.begin(9600);
+
+  for (int i = 0; i < 8; i ++) {
+    pinMode(buttonPin[i], INPUT_PULLUP);
+  }
+  for (int i = 0; i < 8; i ++) {
+    pinMode(switchPin[i], INPUT_PULLUP);
+  }
 }
 
 void loop() {
-  for (int i = 0; i < 47; i ++) {
-    received[i] = Serial2.read();
-    if (i == 0) {
-      while (received[i] != 0xAA) {
-        received[i] = Serial2.read();
-      }
-    }
-    if (i == 46) {
-      while (received[i] != 0xFF) {
-        received[i] = Serial2.read();
-      }
-    }
-    while (received[i] < 0) {
-      received[i] = Serial2.read();
-    }
-  }
+  int x1 = analogRead(JOYSTICK1_X);
+  int y1 = analogRead(JOYSTICK1_Y);
+  int x2 = analogRead(JOYSTICK2_X);
+  int y2 = analogRead(JOYSTICK2_Y);
+
+  int speed_x1 = map(x1, min, 996, -200, 200);
+  int speed_x2 = map(x2, min, 1066, -200, 200);
+  int speed_y1 = map(y1, min, 1040, -200, 200);
+
+  int speed_RF = speed_y1 - speed_x1 - speed_x2; 
+  int speed_RR = speed_y1 + speed_x1 - speed_x2; 
+  int speed_LF = speed_y1 + speed_x1 + speed_x2; 
+  int speed_LR = speed_y1 - speed_x1 + speed_x2; 
+
+  Serial.print(" Speed: ");
+  Serial.print(speed_RF);
+  Serial.print(" ");
+  Serial.print(speed_RR);
+  Serial.print(" ");
+  Serial.print(speed_LF);
+  Serial.print(" ");
+  Serial.print(speed_LR);
+  Serial.print(" ");
+
+  speed_RF = constrain(speed_RF, -200, 200);
+  speed_RR = constrain(speed_RR, -200, 200);
+  speed_LF = constrain(speed_LF, -200, 200);
+  speed_LR = constrain(speed_LR, -200, 200);
 
   Serial.print("Switch: ");
-  for (int i = 1; i <= 8; i ++) {
-    if (received[i] != 0xAA && received[i] != 0xFF) {
-      data[i] = received[i];
-      Serial.print(data[i]);
-      Serial.print(" ");
-    }
+  int switch_sum = 0;
+  for (int i = 0; i < 8; i ++) {
+    switchValue[i] = digitalRead(switchPin[i]);
+    Serial.print(switchValue[i]);
+    Serial.print(" ");
+    switch_sum += switchValue[i];
   }
-
   Serial.print(" Button: ");
-  for (int i = 9; i <= 16; i ++) {
-    if (received[i] != 0xAA && received[i] != 0xFF) {
-      data[i] = received[i];
-      Serial.print(data[i]);
-      Serial.print(" ");
-    }
+  int button_sum = 0;
+  for (int i = 0; i < 8; i ++) {
+    buttonValue[i] = digitalRead(buttonPin[i]);
+    Serial.print(buttonValue[i]);
+    Serial.print(" ");
+    button_sum += buttonValue[i];
   }
 
-  int speed_rf = received[18];
-  if (!received[17]) speed_rf *= -1;
-  int speed_rr = received[20];
-  if (!received[19]) speed_rr *= -1;
-  int speed_lf = received[22];
-  if (!received[21]) speed_lf *= -1;
-  int speed_lr = received[24];
-  if (!received[21]) speed_lr *= -1;
-  int verifySpeed = received[25];
-
-  Serial.print(" Speeed: ");
-  Serial.print(speed_rf);
-  Serial.print(" ");
-  Serial.print(speed_rr);
-  Serial.print(" ");
-  Serial.print(speed_lf);
-  Serial.print(" ");
-  Serial.print(speed_lr);
-  Serial.print(" VerifyCode: ");
-  Serial.print(verifySpeed);
+  trigger1 = analogRead(TRIGGER1);
+  trigger2 = analogRead(TRIGGER2);
+  trigger3 = analogRead(TRIGGER3);
+  trigger4 = analogRead(TRIGGER4);
 
   Serial.print(" Trigger: ");
-  Serial.print(received[26] + received[27] + received[28] + received[29] + received[30]);
+  Serial.print(trigger1);
   Serial.print(" ");
-  Serial.print(received[31] + received[32] + received[33] + received[34] + received[35]);
+  Serial.print(trigger2);
   Serial.print(" ");
-  Serial.print(received[36] + received[37] + received[38] + received[39] + received[40]);
+  Serial.print(trigger3);
   Serial.print(" ");
-  Serial.print(received[41] + received[42] + received[43] + received[44] + received[45]);
+  Serial.print(trigger4);
+  Serial.print(" ");
+
+  Serial3.write(0xAA);
+
+  for (int i = 0; i < 8; i ++) {
+    Serial3.write(switchValue[i]);
+  }
+  for (int i = 0; i < 8; i ++) {
+    Serial3.write(buttonValue[i]);
+  }
+
+  sendSpeedDataToSlave(speed_RF);
+  sendSpeedDataToSlave(speed_RR);
+  sendSpeedDataToSlave(speed_LF);
+  sendSpeedDataToSlave(speed_LR);
+  int verify = abs(speed_LR + speed_RR + speed_LR + speed_RF) >> 2;
+  Serial3.write(verify);
+
+  sendBigDataToSlave(trigger1);
+  sendBigDataToSlave(trigger2);
+  sendBigDataToSlave(trigger3);
+  sendBigDataToSlave(trigger4);
+
+  int even_verify = parity_check(switch_sum + button_sum + speed_RF + speed_RR + speed_LF + speed_LR + trigger1 + trigger2 + trigger3 + trigger4, EVEN_CHECKMODE);
+  int odd_verify = parity_check(switch_sum + button_sum + speed_RF + speed_RR + speed_LF + speed_LR + trigger1 + trigger2 + trigger3 + trigger4, ODD_CHECKMODE);
+  Serial3.write(even_verify);
+  Serial3.write(odd_verify);
+
+  Serial.print(" Verify code: ");
+  Serial.print(even_verify);
+  Serial.print(" ");
+  Serial.print(odd_verify);
   Serial.println();
+
+  Serial3.write(0xFF);
 }
