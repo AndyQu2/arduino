@@ -142,7 +142,7 @@ void loop() {
   int speed_lf = received[22];
   if (!received[21]) speed_lf *= -1;
   int speed_lr = received[24];
-  if (!received[21]) speed_lr *= -1;
+  if (!received[23]) speed_lr *= -1;
   int verifySpeed = received[25];
 
   int trigger1 = received[26] + received[27] + received[28] + received[29] + received[30];
@@ -187,9 +187,5 @@ void loop() {
     Serial.print(" ");
     Serial.print(trigger4);
     Serial.println();
-  }
-  else
-  {
-    Serial.println("Received data error!");
   }
 }
